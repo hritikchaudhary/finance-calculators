@@ -15,6 +15,91 @@ export interface CalculatorInputs {
   annuityShare: number // % of corpus annuitized
 }
 
+// SWP: simulate monthly interest credit and fixed monthly withdrawal
+export function swpFinalCorpus(
+  initialCorpus: number,
+  monthlyWithdrawal: number,
+  annualReturnPct: number,
+  years: number
+): number {
+  const r = monthlyRate(annualReturnPct)
+  let corpus = initialCorpus
+  const months = Math.max(0, Math.round(years * 12))
+  for (let m = 0; m < months; m++) {
+    corpus *= 1 + r
+    corpus -= monthlyWithdrawal
+    if (corpus < 0) return 0
+  }
+  return corpus
+}
+
+// FD: future value with configurable compounding frequency (quarterly default)
+export function futureValueFD(
+  principal: number,
+  annualRatePct: number,
+  years: number,
+  compoundingPerYear: number = 4
+): number {
+  const r = annualRatePct / 100
+  const n = Math.max(1, Math.floor(compoundingPerYear))
+  return principal * Math.pow(1 + r / n, n * Math.max(0, years))
+}
+
+// SSY: annual contributions for contribYears, annual compounding until maturityYears
+export function futureValueSSY(
+  yearlyContribution: number,
+  annualRatePct: number,
+  maturityYears: number = 21,
+  contribYears: number = 15,
+  initial: number = 0
+): number {
+  const r = annualRatePct / 100
+  let balance = initial
+  for (let y = 0; y < Math.max(0, maturityYears); y++) {
+    balance *= 1 + r
+    if (y < Math.max(0, contribYears)) {
+      balance += yearlyContribution
+    }
+  }
+  return balance
+}
+
+// RD: simulate monthly deposits with monthly compounding (approximation)
+export function futureValueRD(
+  monthlyDeposit: number,
+  annualRatePct: number,
+  years: number
+): number {
+  const r = monthlyRate(annualRatePct)
+  const months = Math.max(0, Math.round(years * 12))
+  let balance = 0
+  for (let m = 0; m < months; m++) {
+    balance += monthlyDeposit
+    balance *= 1 + r
+  }
+  return balance
+}
+
+// EMI: monthly installment and optional outstanding after k payments
+export function loanEMI(principal: number, annualRatePct: number, years: number): number {
+  const r = monthlyRate(annualRatePct)
+  const n = Math.max(1, Math.round(years * 12))
+  if (Math.abs(r) < 1e-10) return principal / n
+  const factor = Math.pow(1 + r, n)
+  return (principal * r * factor) / (factor - 1)
+}
+
+export function loanOutstanding(principal: number, annualRatePct: number, years: number, paymentsMade: number): number {
+  const r = monthlyRate(annualRatePct)
+  const n = Math.max(1, Math.round(years * 12))
+  const k = Math.min(Math.max(0, paymentsMade), n)
+  if (Math.abs(r) < 1e-10) return principal * (1 - k / n)
+  const emi = loanEMI(principal, annualRatePct, years)
+  // Outstanding after k payments: P*(1+r)^k - EMI * [((1+r)^k - 1)/r]
+  const factorK = Math.pow(1 + r, k)
+  return Math.max(0, principal * factorK - emi * ((factorK - 1) / r))
+}
+
 export interface ProjectionData {
   age: number
   year: number

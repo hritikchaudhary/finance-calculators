@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
-import { Calculator, Moon, Sun, Target } from "lucide-react"
+import { Calculator, Moon, Sun, Target, ArrowLeft } from "lucide-react"
+import Link from "next/link"
 import { futureValueMF, monthlyRate, annuityFactorMonthly, futureValueLumpSum, sipRequiredForTarget } from "@/lib/formulas"
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts"
 
@@ -68,6 +69,12 @@ export default function MFCalculatorPage() {
             </div>
           </div>
           <div className="flex items-center gap-4">
+            <Button asChild variant="ghost" className="gap-2">
+              <Link href="/">
+                <ArrowLeft className="h-4 w-4" />
+                All calculators
+              </Link>
+            </Button>
             <Button variant="outline" size="icon" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="h-10 w-10">
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               <span className="sr-only">Toggle theme</span>
@@ -165,7 +172,7 @@ export default function MFCalculatorPage() {
                     <XAxis dataKey="year" tickLine={false} axisLine={false} />
                     <YAxis tickFormatter={(v)=> new Intl.NumberFormat("en-IN",{maximumFractionDigits:0}).format(v as number)} tickLine={false} axisLine={false} width={80} />
                     <Tooltip formatter={(v)=> formatCurrency(Number(v))} labelFormatter={(l)=> `Year ${l}`} />
-                    <Line type="monotone" dataKey={showReal ? "real" : "fv"} stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey={showReal ? "real" : "fv"} stroke="#22c55e" strokeWidth={2.5} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>

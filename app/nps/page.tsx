@@ -164,15 +164,6 @@ export default function NPSCalculator() {
       </header>
 
       <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-end mb-8">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3">
-              <Switch checked={inflationAdjusted} onCheckedChange={setInflationAdjusted} />
-              <Label className="text-sm font-medium">Inflation-adjusted</Label>
-            </div>
-          </div>
-        </div>
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-1 space-y-6">
             <Card className="shadow-sm">
@@ -329,10 +320,14 @@ export default function NPSCalculator() {
                   />
                 </div>
 
-                <div className="space-y-3">
-                  <Label className="text-sm font-medium">
-                    Inflation Rate: <span className="font-semibold text-primary">{inputs.inflation}%</span>
-                  </Label>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="flex items-center gap-2 text-sm font-medium">
+                      Inflation-adjusted
+                      <Switch checked={inflationAdjusted} onCheckedChange={setInflationAdjusted} />
+                    </Label>
+                    <span className="text-sm text-muted-foreground">{inputs.inflation}%</span>
+                  </div>
                   <Slider
                     value={[inputs.inflation]}
                     onValueChange={([value]) => setInputs((prev) => ({ ...prev, inflation: value }))}
@@ -487,21 +482,19 @@ export default function NPSCalculator() {
                         <Area
                           type="monotone"
                           dataKey="realValue"
-                          stroke="hsl(var(--chart-2))"
-                          fill="hsl(var(--chart-2))"
-                          fillOpacity={0.2}
+                          stroke="#22c55e"
+                          fill="rgba(34,197,94,0.2)"
                           name="Corpus"
-                          strokeWidth={2}
+                          strokeWidth={2.5}
                         />
                       ) : (
                         <Area
                           type="monotone"
                           dataKey="corpus"
-                          stroke="hsl(var(--chart-1))"
-                          fill="hsl(var(--chart-1))"
-                          fillOpacity={0.2}
+                          stroke="#22c55e"
+                          fill="rgba(34,197,94,0.2)"
                           name="Corpus"
-                          strokeWidth={2}
+                          strokeWidth={2.5}
                         />
                       )}
                     </AreaChart>

@@ -8,35 +8,44 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
-import { Calculator, Moon, Sun, Target } from "lucide-react"
-import { futureValueLumpSum } from "@/lib/formulas"
+import { Calculator, Moon, Sun, Target, ArrowLeft } from "lucide-react"
+import Link from "next/link"
+import { swpFinalCorpus, monthlyRate } from "@/lib/formulas"
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts"
 
-export default function LumpsumCalculatorPage() {
+export default function SWPCalculatorPage() {
   const { theme, setTheme } = useTheme()
-  const [amount, setAmount] = useState(100000)
-  const [expectedReturn, setExpectedReturn] = useState(12)
+  const [initialCorpus, setInitialCorpus] = useState(1000000)
+  const [monthlyWithdrawal, setMonthlyWithdrawal] = useState(15000)
+  const [expectedReturn, setExpectedReturn] = useState(10)
   const [years, setYears] = useState(10)
   const [showReal, setShowReal] = useState(false)
   const [inflation, setInflation] = useState(6)
 
-  const fv = useMemo(() => futureValueLumpSum(amount, expectedReturn, years), [amount, expectedReturn, years])
-  const invested = amount
-  const gains = Math.max(0, fv - invested)
+  const finalCorpus = useMemo(() => swpFinalCorpus(initialCorpus, monthlyWithdrawal, expectedReturn, years), [initialCorpus, monthlyWithdrawal, expectedReturn, years])
 
   const projData = useMemo(() => {
-    const nYears = Math.max(0, years)
-    const arr: { year: number; fv: number; real: number }[] = []
-    for (let y = 0; y <= nYears; y++) {
-      const value = futureValueLumpSum(amount, expectedReturn, y)
-      const real = showReal ? value / Math.pow(1 + inflation / 100, y) : value
-      arr.push({ year: y, fv: value, real })
+    const r = monthlyRate(expectedReturn)
+    const months = Math.max(0, Math.round(years * 12))
+    let corpus = initialCorpus
+    const arr: { month: number; year: number; value: number; real: number }[] = []
+    for (let m = 0; m <= months; m++) {
+      const y = Math.floor(m / 12)
+      if (m > 0) {
+        corpus *= 1 + r
+        corpus -= monthlyWithdrawal
+        if (corpus < 0) corpus = 0
+      }
+      const real = showReal ? corpus / Math.pow(1 + inflation / 100, y) : corpus
+      if (m % 12 === 0) arr.push({ month: m, year: y, value: corpus, real })
+      if (corpus <= 0) break
     }
     return arr
-  }, [amount, expectedReturn, years, showReal, inflation])
+  }, [initialCorpus, monthlyWithdrawal, expectedReturn, years, showReal, inflation])
 
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount)
+  const formatCurrency = (amount: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount)
+
+  const depleted = finalCorpus <= 0
 
   return (
     <div className="min-h-screen bg-background">
@@ -47,11 +56,17 @@ export default function LumpsumCalculatorPage() {
               <Calculator className="h-7 w-7 text-primary" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">Lumpsum Calculator</h1>
-              <p className="text-muted-foreground">Future value of a one-time investment</p>
+              <h1 className="text-2xl font-bold tracking-tight">SWP Calculator</h1>
+              <p className="text-muted-foreground">Systematic Withdrawal Plan projection</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
+            <Button asChild variant="ghost" className="gap-2">
+              <Link href="/">
+                <ArrowLeft className="h-4 w-4" />
+                All calculators
+              </Link>
+            </Button>
             <Button variant="outline" size="icon" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="h-10 w-10">
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               <span className="sr-only">Toggle theme</span>
@@ -65,18 +80,22 @@ export default function LumpsumCalculatorPage() {
           <Card className="shadow-sm">
             <CardHeader className="pb-4">
               <CardTitle className="text-lg">Inputs</CardTitle>
-              <CardDescription>Enter investment details</CardDescription>
+              <CardDescription>Enter your SWP details</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
-                <Label>Investment Amount</Label>
-                <Input type="number" value={amount} min={0} step={1000} onChange={(e) => setAmount(Number(e.target.value))} />
+                <Label>Initial Corpus</Label>
+                <Input type="number" value={initialCorpus} min={0} step={10000} onChange={(e) => setInitialCorpus(Number(e.target.value))} />
+              </div>
+              <div className="space-y-2">
+                <Label>Monthly Withdrawal</Label>
+                <Input type="number" value={monthlyWithdrawal} min={0} step={500} onChange={(e) => setMonthlyWithdrawal(Number(e.target.value))} />
               </div>
               <div className="space-y-3">
                 <Label>
                   Expected Return: <span className="font-semibold text-primary">{expectedReturn}%</span>
                 </Label>
-                <Slider value={[expectedReturn]} onValueChange={([v]) => setExpectedReturn(v)} min={2} max={20} step={0.5} />
+                <Slider value={[expectedReturn]} onValueChange={([v]) => setExpectedReturn(v)} min={4} max={20} step={0.5} />
               </div>
               <div className="space-y-2">
                 <Label>Years</Label>
@@ -99,22 +118,11 @@ export default function LumpsumCalculatorPage() {
           <Card className="shadow-sm">
             <CardHeader className="pb-4">
               <CardTitle className="text-lg flex items-center gap-2"><Target className="h-5 w-5 text-primary" /> Result</CardTitle>
-              <CardDescription>Projected corpus and breakdown</CardDescription>
+              <CardDescription>Final corpus at end of period</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{formatCurrency(fv)}</div>
-              <div className="mt-2 text-sm text-muted-foreground">Future Value</div>
-
-              <div className="mt-6 grid grid-cols-2 gap-4">
-                <div>
-                  <div className="text-sm text-muted-foreground">Invested</div>
-                  <div className="text-xl font-semibold">{formatCurrency(invested)}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-muted-foreground">Gains</div>
-                  <div className="text-xl font-semibold">{formatCurrency(gains)}</div>
-                </div>
-              </div>
+              <div className="text-3xl font-bold">{formatCurrency(finalCorpus)}</div>
+              {depleted && <div className="mt-2 text-sm text-red-500">Corpus depletes before or by the end of the selected period.</div>}
 
               <div className="mt-8 h-64">
                 <ResponsiveContainer width="100%" height="100%">
@@ -123,7 +131,7 @@ export default function LumpsumCalculatorPage() {
                     <XAxis dataKey="year" tickLine={false} axisLine={false} />
                     <YAxis tickFormatter={(v)=> new Intl.NumberFormat("en-IN",{maximumFractionDigits:0}).format(v as number)} tickLine={false} axisLine={false} width={80} />
                     <Tooltip formatter={(v)=> formatCurrency(Number(v))} labelFormatter={(l)=> `Year ${l}`} />
-                    <Line type="monotone" dataKey={showReal ? "real" : "fv"} stroke="#22c55e" strokeWidth={2.5} dot={false} />
+                    <Line type="monotone" dataKey={showReal ? "real" : "value"} stroke="#22c55e" strokeWidth={2.5} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
