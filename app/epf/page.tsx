@@ -1,17 +1,15 @@
 "use client"
 
 import { useState } from "react"
-import { useTheme } from "next-themes"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
-import { Calculator, Moon, Sun, Target } from "lucide-react"
+import { Calculator, Target } from "lucide-react"
 import { futureValueEPF } from "@/lib/formulas"
+import { CalculatorHeader } from "@/components/CalculatorHeader"
 
 export default function EPFCalculatorPage() {
-  const { theme, setTheme } = useTheme()
   const [startingBasic, setStartingBasic] = useState(30000)
   const [annualGrowth, setAnnualGrowth] = useState(7)
   const [employeePct, setEmployeePct] = useState(12)
@@ -26,25 +24,7 @@ export default function EPFCalculatorPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-card/50 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-6 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-primary/10 rounded-xl border">
-              <Calculator className="h-7 w-7 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">EPF Calculator</h1>
-              <p className="text-muted-foreground">Employee Provident Fund balance projection</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <Button variant="outline" size="icon" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="h-10 w-10">
-              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              <span className="sr-only">Toggle theme</span>
-            </Button>
-          </div>
-        </div>
-      </header>
+      <CalculatorHeader title="EPF Calculator" subtitle="Employee Provident Fund balance projection" Icon={Calculator} />
 
       <main className="container mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-1">

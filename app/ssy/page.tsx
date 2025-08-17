@@ -1,17 +1,15 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { useTheme } from "next-themes"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
-import { Calculator, Moon, Sun, Target } from "lucide-react"
+import { Calculator, Target } from "lucide-react"
 import { futureValueSSY } from "@/lib/formulas"
+import { CalculatorHeader } from "@/components/CalculatorHeader"
 
 export default function SSYCalculatorPage() {
-  const { theme, setTheme } = useTheme()
   const [yearlyContribution, setYearlyContribution] = useState(50000)
   const [rate, setRate] = useState(8)
   const [maturityYears, setMaturityYears] = useState(21)
@@ -24,23 +22,7 @@ export default function SSYCalculatorPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-card/50 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-6 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-primary/10 rounded-xl border">
-              <Calculator className="h-7 w-7 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">SSY Calculator</h1>
-              <p className="text-muted-foreground">Sukanya Samriddhi Yojana maturity value</p>
-            </div>
-          </div>
-          <Button variant="outline" size="icon" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="h-10 w-10">
-            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            <span className="sr-only">Toggle theme</span>
-          </Button>
-        </div>
-      </header>
+      <CalculatorHeader title="SSY Calculator" subtitle="Sukanya Samriddhi Yojana maturity value" Icon={Calculator} />
 
       <main className="container mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-1">
