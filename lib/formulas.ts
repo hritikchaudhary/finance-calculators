@@ -42,6 +42,72 @@ export function annuityFactorMonthly(rMonthly: number, nMonths: number): number 
   return (Math.pow(1 + rMonthly, nMonths) - 1) / rMonthly
 }
 
+// -------- General-purpose calculators --------
+// SIP FV with monthly contributions and monthly compounding
+export function futureValueSIP(monthlyContribution: number, annualRatePct: number, years: number): number {
+  const r = monthlyRate(annualRatePct)
+  const n = Math.max(0, Math.round(years * 12))
+  const af = annuityFactorMonthly(r, n)
+  return monthlyContribution * af
+}
+
+// Required monthly SIP to reach a target future value given an initial corpus
+export function sipRequiredForTarget(
+  targetFV: number,
+  currentCorpus: number,
+  annualReturnPct: number,
+  years: number
+): number {
+  return requiredMonthlyContribution(targetFV, currentCorpus, annualReturnPct, years)
+}
+
+// Mutual Fund combined FV = existing corpus (lumpsum) growth + SIP growth
+export function futureValueMF(
+  currentCorpus: number,
+  monthlyContribution: number,
+  annualReturnPct: number,
+  years: number
+): number {
+  const fvLump = futureValueLumpSum(currentCorpus, annualReturnPct, years)
+  const fvSip = futureValueSIP(monthlyContribution, annualReturnPct, years)
+  return fvLump + fvSip
+}
+
+// PPF FV (yearly contribution, annual compounding)
+export function futureValuePPF(yearlyContribution: number, annualRatePct: number, years: number, initial=0): number {
+  const r = annualRatePct / 100
+  const fvInitial = initial * Math.pow(1 + r, Math.max(0, years))
+  if (years <= 0) return fvInitial
+  if (Math.abs(r) < 1e-10) return fvInitial + yearlyContribution * years
+  const af = (Math.pow(1 + r, years) - 1) / r // ordinary annuity, deposit at year-end
+  return fvInitial + yearlyContribution * af
+}
+
+// EPF simple projection (monthly contributions from employee+employer on basic salary with annual growth, monthly compounding)
+export function futureValueEPF(
+  startingBasic: number,
+  annualSalaryGrowthPct: number,
+  employeePct: number,
+  employerPct: number,
+  epfRateAnnualPct: number,
+  years: number
+): number {
+  const rMonthly = monthlyRate(epfRateAnnualPct)
+  let basic = startingBasic
+  let balance = 0
+  for (let y = 0; y < Math.max(0, years); y++) {
+    const monthlyEmployee = (employeePct / 100) * basic
+    const monthlyEmployer = (employerPct / 100) * basic
+    const monthlyContr = monthlyEmployee + monthlyEmployer
+    for (let m = 0; m < 12; m++) {
+      balance += monthlyContr
+      balance *= 1 + rMonthly
+    }
+    basic *= 1 + annualSalaryGrowthPct / 100
+  }
+  return balance
+}
+
 // Effective target retirement corpus, depending on target type
 export function effectiveTargetCorpus(
   targetType: "corpus" | "pension",

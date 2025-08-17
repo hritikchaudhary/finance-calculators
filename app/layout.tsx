@@ -6,8 +6,8 @@ import { ThemeProvider } from "@/components/theme-provider"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "NPS Retirement Calculator",
-  description: "Professional retirement planning calculator with NPS features",
+  title: "Finance Calculators",
+  description: "A suite of clean, fast, and accurate finance calculators",
   generator: "v0.app",
 }
 
