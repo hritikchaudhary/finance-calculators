@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Calculator, Target, TrendingUp, Moon, Sun, BarChart3, Settings } from "lucide-react"
 import { useTheme } from "next-themes"
 import { XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from "recharts"
+import { buildProjection, effectiveTargetCorpus, requiredMonthlyContribution, monthlyRate } from "@/lib/formulas"
 
 interface CalculatorInputs {
   currentAge: number
@@ -66,50 +67,38 @@ export default function NPSCalculator() {
 
   useEffect(() => {
     const years = inputs.retirementAge - inputs.currentAge
-    const data: ProjectionData[] = []
-    let corpus = inputs.currentCorpus
-    let monthlyContrib = inputs.monthlyContribution
-
-    for (let i = 0; i <= years; i++) {
-      const age = inputs.currentAge + i
-      const year = new Date().getFullYear() + i
-
-      if (i > 0) {
-        const annualContrib = monthlyContrib * 12
-        corpus += annualContrib
-        corpus *= 1 + inputs.expectedReturn / 100
-        monthlyContrib *= 1 + inputs.contributionGrowth / 100
-      }
-
-      const realValue = inflationAdjusted ? corpus / Math.pow(1 + inputs.inflation / 100, i) : corpus
-
-      data.push({
-        age,
-        year,
-        corpus,
-        realValue,
-        contribution: monthlyContrib,
-      })
-    }
-
-    setProjectionData(data)
-    setProjectedCorpus(data[data.length - 1]?.corpus || 0)
 
     if (calculationMode === "target") {
-      // Determine effective target retirement corpus
-      const annuityRateFrac = Math.max(0.0001, inputs.annuityRate / 100)
-      const annuityShareFrac = Math.max(0.0001, inputs.annuityShare / 100)
-      const effectiveTargetCorpus =
-        targetType === "corpus"
-          ? inputs.targetCorpus
-          : (inputs.targetMonthlyPension * 12) / (annuityRateFrac * annuityShareFrac)
+      // 1) Compute required monthly contribution
+      const targetAmount = effectiveTargetCorpus(
+        targetType,
+        inputs.targetCorpus,
+        inputs.targetMonthlyPension,
+        inputs.annuityRate,
+        inputs.annuityShare
+      )
+      const required = requiredMonthlyContribution(
+        targetAmount,
+        inputs.currentCorpus,
+        inputs.expectedReturn,
+        years
+      )
+      setRequiredContribution(required)
 
-      const targetAmount = effectiveTargetCorpus
-      const presentValueFactor = Math.pow(1 + inputs.expectedReturn / 100, years)
-      const annuityFactor = (presentValueFactor - 1) / (inputs.expectedReturn / 100)
-      const required = (targetAmount - inputs.currentCorpus * presentValueFactor) / annuityFactor / 12
-      setRequiredContribution(Math.max(0, required))
+      // 2) Build projection using the required contribution (so UI reflects Find Contribution mode)
+      const { data, projectedCorpus } = buildProjection(
+        { ...inputs, monthlyContribution: required },
+        inflationAdjusted
+      )
+      setProjectionData(data)
+      setProjectedCorpus(projectedCorpus)
+      return
     }
+
+    // Contribution mode: use the user-entered monthly contribution
+    const { data, projectedCorpus } = buildProjection(inputs, inflationAdjusted)
+    setProjectionData(data)
+    setProjectedCorpus(projectedCorpus)
   }, [inputs, inflationAdjusted, calculationMode, targetType])
 
   const formatCurrency = (amount: number) => {
@@ -130,14 +119,15 @@ export default function NPSCalculator() {
       : inputs.currentCorpus
 
   // Effective target corpus for progress denominator
-  const effectiveTargetForProgress = (() => {
-    if (calculationMode === "target" && targetType === "pension") {
-      const r = Math.max(0.0001, inputs.annuityRate / 100)
-      const s = Math.max(0.0001, inputs.annuityShare / 100)
-      return (inputs.targetMonthlyPension * 12) / (r * s)
-    }
-    return inputs.targetCorpus
-  })()
+  const effectiveTargetForProgress = calculationMode === "target"
+    ? effectiveTargetCorpus(
+        targetType,
+        inputs.targetCorpus,
+        inputs.targetMonthlyPension,
+        inputs.annuityRate,
+        inputs.annuityShare
+      )
+    : inputs.targetCorpus
 
   const progressRaw = effectiveTargetForProgress > 0 ? (baseForProgress / effectiveTargetForProgress) * 100 : 0
   const progressPercentage = Math.min(Math.max(progressRaw, 0), 100)
@@ -178,7 +168,7 @@ export default function NPSCalculator() {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
               <Switch checked={inflationAdjusted} onCheckedChange={setInflationAdjusted} />
-              <Label className="text-sm font-medium">Inflation Adjusted</Label>
+              <Label className="text-sm font-medium">Inflation-adjusted</Label>
             </div>
           </div>
         </div>
@@ -402,9 +392,13 @@ export default function NPSCalculator() {
                       <TrendingUp className="h-6 w-6 text-chart-2" />
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground font-medium">Real Value</p>
+                      <p className="text-sm text-muted-foreground font-medium">Corpus{inflationAdjusted ? " (inflation-adjusted)" : ""}</p>
                       <p className="text-2xl font-bold tracking-tight">
-                        {formatCurrency(projectionData[projectionData.length - 1]?.realValue || 0)}
+                        {formatCurrency(
+                          inflationAdjusted
+                            ? (projectionData[projectionData.length - 1]?.realValue || 0)
+                            : (projectionData[projectionData.length - 1]?.corpus || 0)
+                        )}
                       </p>
                     </div>
                   </div>
@@ -444,7 +438,15 @@ export default function NPSCalculator() {
                     <div className="flex items-center justify-between text-sm">
                       <span className="font-medium">₹0</span>
                       <span className="text-muted-foreground font-medium">
-                        Target: {formatCurrency(inputs.targetCorpus)}
+                        Target: {formatCurrency(
+                          effectiveTargetCorpus(
+                            targetType,
+                            inputs.targetCorpus,
+                            inputs.targetMonthlyPension,
+                            inputs.annuityRate,
+                            inputs.annuityShare
+                          )
+                        )}
                       </span>
                     </div>
                   </div>
@@ -471,10 +473,7 @@ export default function NPSCalculator() {
                         axisLine={false}
                       />
                       <Tooltip
-                        formatter={(value: number, name: string) => [
-                          formatCurrency(value),
-                          name === "corpus" ? "Nominal Value" : "Real Value",
-                        ]}
+                        formatter={(value: number) => [formatCurrency(value), "Corpus"]}
                         labelFormatter={(age) => `Age: ${age}`}
                         contentStyle={{
                           backgroundColor: "hsl(var(--card))",
@@ -484,23 +483,24 @@ export default function NPSCalculator() {
                         }}
                       />
                       <Legend />
-                      <Area
-                        type="monotone"
-                        dataKey="corpus"
-                        stroke="hsl(var(--chart-1))"
-                        fill="hsl(var(--chart-1))"
-                        fillOpacity={0.2}
-                        name="Nominal Value"
-                        strokeWidth={2}
-                      />
-                      {inflationAdjusted && (
+                      {inflationAdjusted ? (
                         <Area
                           type="monotone"
                           dataKey="realValue"
                           stroke="hsl(var(--chart-2))"
                           fill="hsl(var(--chart-2))"
                           fillOpacity={0.2}
-                          name="Real Value"
+                          name="Corpus"
+                          strokeWidth={2}
+                        />
+                      ) : (
+                        <Area
+                          type="monotone"
+                          dataKey="corpus"
+                          stroke="hsl(var(--chart-1))"
+                          fill="hsl(var(--chart-1))"
+                          fillOpacity={0.2}
+                          name="Corpus"
                           strokeWidth={2}
                         />
                       )}
