@@ -2,6 +2,9 @@
 
 Modern, accurate personal finance calculators tailored for India. Built with Next.js, TypeScript, Tailwind (shadcn/ui), and Recharts.
 
+### Live demo
+- https://finance-calculators-psi.vercel.app/
+
 ### Stack
  - Next.js (App Router) + TypeScript
  - shadcn/ui + Tailwind CSS
