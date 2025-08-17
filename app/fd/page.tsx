@@ -8,7 +8,8 @@ import { Slider } from "@/components/ui/slider"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Calculator, Target } from "lucide-react"
 import { futureValueFD } from "@/lib/formulas"
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts"
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell, Legend } from "recharts"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CalculatorHeader } from "@/components/CalculatorHeader"
 
 const freqMap: Record<string, number> = { yearly: 1, halfyearly: 2, quarterly: 4, monthly: 12 }
@@ -18,8 +19,35 @@ export default function FDCalculatorPage() {
   const [rate, setRate] = useState(7)
   const [years, setYears] = useState(5)
   const [freq, setFreq] = useState<keyof typeof freqMap>("quarterly")
+  const [chartMode, setChartMode] = useState<"pie" | "graph">("pie")
 
   const fv = useMemo(() => futureValueFD(principal, rate, years, freqMap[freq]), [principal, rate, years, freq])
+  const invested = principal
+  const gains = Math.max(0, fv - invested)
+
+  const pieData = [
+    { name: "Invested", value: Math.max(0, invested) },
+    { name: "Gains", value: Math.max(0, gains) },
+  ]
+  const PIE_FILL_COLORS = ["rgba(34,197,94,0.20)", "rgba(148,163,184,0.20)"]
+  const PIE_STROKE_COLORS = ["#16a34a", "#334155"]
+
+  const renderLegend = (props: any) => {
+    const { payload } = props
+    return (
+      <ul className="flex justify-center gap-6 mt-2">
+        {payload?.map((entry: any, i: number) => (
+          <li key={`legend-${i}`} className="flex items-center gap-2 text-foreground">
+            <span
+              className="inline-block h-3 w-3 rounded-sm"
+              style={{ backgroundColor: PIE_FILL_COLORS[i % PIE_FILL_COLORS.length], border: `2px solid ${PIE_STROKE_COLORS[i % PIE_STROKE_COLORS.length]}` }}
+            />
+            <span className="text-sm font-medium">{entry.value}</span>
+          </li>
+        ))}
+      </ul>
+    )
+  }
 
   const projData = useMemo(() => {
     const arr: { year: number; value: number }[] = []
@@ -29,7 +57,8 @@ export default function FDCalculatorPage() {
     return arr
   }, [principal, rate, years, freq])
 
-  const formatCurrency = (amount: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount)
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount)
 
   return (
     <div className="min-h-screen bg-background">
@@ -84,17 +113,60 @@ export default function FDCalculatorPage() {
             <CardContent>
               <div className="text-3xl font-bold">{formatCurrency(fv)}</div>
 
-              <div className="mt-8 h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={projData} margin={{ left: 8, right: 8, top: 8, bottom: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                    <XAxis dataKey="year" tickLine={false} axisLine={false} />
-                    <YAxis tickFormatter={(v)=> new Intl.NumberFormat("en-IN",{maximumFractionDigits:0}).format(v as number)} tickLine={false} axisLine={false} width={80} />
-                    <Tooltip formatter={(v)=> formatCurrency(Number(v))} labelFormatter={(l)=> `Year ${l}`} />
-                    <Area type="monotone" dataKey="value" stroke="#22c55e" strokeWidth={2.5} fill="rgba(34,197,94,0.2)" />
-                  </AreaChart>
-                </ResponsiveContainer>
+              <div className="mt-4 flex items-center justify-between">
+                <Tabs value={chartMode} onValueChange={(v) => setChartMode(v as any)} className="w-full">
+                  <TabsList className="w-full focus:outline-none focus-visible:outline-none focus-visible:ring-0 ring-0">
+                    <TabsTrigger value="pie" className="flex-1 focus:outline-none focus-visible:outline-none focus-visible:ring-0 ring-0">Breakdown</TabsTrigger>
+                    <TabsTrigger value="graph" className="flex-1 focus:outline-none focus-visible:outline-none focus-visible:ring-0 ring-0">Timeline</TabsTrigger>
+                  </TabsList>
+                </Tabs>
               </div>
+
+              {chartMode === "pie" ? (
+                <div className="mt-6 h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Tooltip formatter={(v: number, n: string) => [formatCurrency(Number(v)), n]} />
+                      <Legend verticalAlign="bottom" align="center" content={renderLegend} />
+                      <Pie
+                        data={pieData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={95}
+                        labelLine={false}
+                        label={({ value, x, y }) => (
+                          <text x={x} y={y} fill="var(--foreground)" textAnchor="middle" dominantBaseline="central" fontSize={12}>
+                            {formatCurrency(Number(value))}
+                          </text>
+                        )}
+                      >
+                        {pieData.map((_, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={PIE_FILL_COLORS[index % PIE_FILL_COLORS.length]}
+                            stroke={PIE_STROKE_COLORS[index % PIE_STROKE_COLORS.length]}
+                            strokeWidth={2}
+                          />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="mt-6 h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={projData} margin={{ left: 8, right: 8, top: 8, bottom: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                      <XAxis dataKey="year" tickLine={false} axisLine={false} />
+                      <YAxis tickFormatter={(v)=> new Intl.NumberFormat("en-IN",{minimumFractionDigits:2, maximumFractionDigits:2}).format(v as number)} tickLine={false} axisLine={false} width={80} />
+                      <Tooltip formatter={(v)=> formatCurrency(Number(v))} labelFormatter={(l)=> `Year ${l}`} />
+                      <Area type="monotone" dataKey="value" stroke="#22c55e" strokeWidth={2.5} fill="rgba(34,197,94,0.2)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
